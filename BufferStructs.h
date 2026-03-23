@@ -2,6 +2,7 @@
 #include <DirectXMath.h>
 
 
+
 struct VertexShaderExternalData {
 	DirectX::XMFLOAT4X4 world;
     DirectX::XMFLOAT4X4 worldInverseTranspose;
@@ -24,4 +25,12 @@ struct PixelShaderExternalData
 
 	int lightCount;
 	Light lights[6];
+};
+
+// Overall scene data for ray tracing
+struct RaytracingSceneData
+{
+	DirectX::XMFLOAT4X4 InverseViewProjection;
+	DirectX::XMFLOAT3 CameraPosition;
+	float pad;
 };

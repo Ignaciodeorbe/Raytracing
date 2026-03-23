@@ -226,25 +226,15 @@ Mesh::~Mesh()
 // Getter Methods
 //---------------
 
-D3D12_VERTEX_BUFFER_VIEW Mesh::GetVertexBufferView()
-{
-	return vbView;
-}
+D3D12_VERTEX_BUFFER_VIEW Mesh::GetVertexBufferView(){ return vbView; }
+D3D12_INDEX_BUFFER_VIEW Mesh::GetIndexBufferView() { return ibView; }
 
-D3D12_INDEX_BUFFER_VIEW Mesh::GetIndexBufferView()
-{
-	return ibView;
-}
+Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetVertexBuffer() { return vertexBuffer; }
+Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetIndexBuffer() { return indexBuffer; }
 
-int Mesh::GetIndexCount()
-{
-	return indexCount;
-}
+int Mesh::GetIndexCount(){ return indexCount; }
 
-int Mesh::GetVertexCount()
-{
-	return vertexCount;
-}
+int Mesh::GetVertexCount(){	return vertexCount; }
 
 //--------
 // Methods
