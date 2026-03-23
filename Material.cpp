@@ -7,20 +7,12 @@ Material::Material(
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pipeline,
     DirectX::XMFLOAT3 tint,
     DirectX::XMFLOAT2 scale,
-    DirectX::XMFLOAT2 offset,
-    unsigned int albedo,
-    unsigned int normal,
-    unsigned int roughness,
-    unsigned int metalness)
+    DirectX::XMFLOAT2 offset)
     :
     pipelineState(pipeline),
     colorTint(tint),
     uvScale(scale),
-    uvOffset(offset),
-    albedoIndex(albedo),
-    normalIndex(normal),
-    roughnessIndex(roughness),
-    metalnessIndex(metalness)
+    uvOffset(offset)
 {
 }
 

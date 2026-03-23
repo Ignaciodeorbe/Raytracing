@@ -1,4 +1,5 @@
 #include "Mesh.h"
+#include "RayTracing.h"
 #include <memory>
 #include <fstream>
 #include <stdexcept>
@@ -214,6 +215,9 @@ Mesh::Mesh(const char* filename)
 	indexCount = indexCounter;
 
 	CreateBuffers(&verts[0], vertCounter, &indices[0], indexCounter);
+
+	// Create the raytracing acceleration structure for this mesh
+	rayTracingData = RayTracing::CreateBottomLevelAccelerationStructureForMesh(this);
 }
 
 // Destructor
@@ -233,8 +237,9 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetVertexBuffer() { return vertexBu
 Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetIndexBuffer() { return indexBuffer; }
 
 int Mesh::GetIndexCount(){ return indexCount; }
-
 int Mesh::GetVertexCount(){	return vertexCount; }
+
+const MeshRayTracingData& Mesh::GetRayTracingData() { return rayTracingData; }
 
 //--------
 // Methods
@@ -264,6 +269,9 @@ void Mesh::CreateBuffers(Vertex* vertices, int vertexCount, unsigned int* indice
 	ibView.SizeInBytes = sizeof(unsigned int) * indexCount;
 	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 
+
+	// Create the raytracing acceleration structure for this mesh
+	rayTracingData = RayTracing::CreateBottomLevelAccelerationStructureForMesh(this);
 }
 
 // --------------------------------------------------------

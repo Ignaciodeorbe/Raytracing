@@ -103,8 +103,8 @@ namespace Graphics
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON,
 		D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE,
 		UINT64 alignment = 0,
-		void* data,
-		size_t dataSize);
+		void* data = nullptr,
+		size_t dataSize = 0);
 
 	void ReserveDescriptorHeapSlot(
 		D3D12_CPU_DESCRIPTOR_HANDLE* reservedCPUHandle,
