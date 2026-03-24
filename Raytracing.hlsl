@@ -138,8 +138,8 @@ void RayGen()
 	// pixel of the output buffer using this shader's indices
 	RayDesc ray = CalcRayFromCamera(
 		rayIndices, 
-		CameraPosition, 
-		InverseViewProjection);
+		cb.CameraPosition, 
+		cb.InverseViewProjection);
 
 	// Set up the payload for the ray
 	// This initializes the struct to all zeros
