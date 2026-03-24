@@ -23,16 +23,18 @@ using namespace DirectX;
 // --------------------------------------------------------
 Game::Game()
 {
-	CreateGeometry();
-
-	// Camera initialization
-	camera = std::make_shared<Camera>(XMFLOAT3(0.0f, 0.0f, -15.0f), 10.0f, 0.01f, XM_PIDIV4, Window::AspectRatio());
-
 	// Initialize raytracing
 	RayTracing::Initialize(
 		Window::Width(),
 		Window::Height(),
 		FixPath(L"RayTracing.cso"));
+
+	CreateGeometry();
+
+	// Camera initialization
+	camera = std::make_shared<Camera>(XMFLOAT3(0.0f, 0.0f, -15.0f), 10.0f, 0.01f, XM_PIDIV4, Window::AspectRatio());
+
+	
 }
 
 
