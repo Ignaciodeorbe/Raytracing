@@ -166,10 +166,43 @@ void Game::Update(float deltaTime, float totalTime)
 
 	camera->Update(deltaTime);
 
-	// Rotate entities
+	// Torus movment
 	for (int i = 0; i < entities.size(); i++)
 	{
-		entities[i]->GetTransform()->Rotate(0, deltaTime, 0);
+		if (i >= 1 && i <= 5) // torus range
+		{
+			auto t = entities[i]->GetTransform();
+			t->Rotate(deltaTime * 0.5f, deltaTime, deltaTime * 0.25f);
+		}
+	}
+
+	// Sphere movment
+	int sphereStart = 6;
+
+	for (int s = 0; s < 5; s++)
+	{
+		int i = sphereStart + s;
+
+		auto transform = entities[i]->GetTransform();
+
+		// Base position
+		float baseX = -8.0f + s * 4.0f;
+		float baseZ = 3.0f;
+
+		float wave = sin(totalTime * 0.8f + s) * 3.0f;
+
+		XMFLOAT3 pos;
+
+		if (s % 2 == 0)
+		{
+			pos = XMFLOAT3(baseX + wave, 1.0f, baseZ);
+		}
+		else
+		{
+			pos = XMFLOAT3(baseX, 1.0f, baseZ + wave);
+		}
+
+		transform->SetPosition(pos);
 	}
 }
 
