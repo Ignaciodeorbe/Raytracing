@@ -226,24 +226,24 @@ void Game::Draw(float deltaTime, float totalTime)
 		rb.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		rb.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		Graphics::CommandList -> ResourceBarrier(1, &rb);
+		//Graphics::CommandList -> ResourceBarrier(1, &rb);
 
 		// Background color (Cornflower Blue in this case) for clearing
-		float color[] = { 0.4f, 0.6f, 0.75f, 1.0f };
+		//float color[] = { 0.4f, 0.6f, 0.75f, 1.0f };
 
-		// Clear the RTV
-		Graphics::CommandList -> ClearRenderTargetView(
-			Graphics::RTVHandles[Graphics::SwapChainIndex()],
-			color,
-			0, 0); // No scissor rectangles
+		//// Clear the RTV
+		//Graphics::CommandList -> ClearRenderTargetView(
+		//	Graphics::RTVHandles[Graphics::SwapChainIndex()],
+		//	color,
+		//	0, 0); // No scissor rectangles
 
-		// Clear the depth buffer, too
-		Graphics::CommandList -> ClearDepthStencilView(
-			Graphics::DSVHandle,
-			D3D12_CLEAR_FLAG_DEPTH,
-			1.0f, // Max depth = 1.0f
-			0, // Not clearing stencil, but need a value
-			0, 0); // No scissor rects
+		//// Clear the depth buffer, too
+		//Graphics::CommandList -> ClearDepthStencilView(
+		//	Graphics::DSVHandle,
+		//	D3D12_CLEAR_FLAG_DEPTH,
+		//	1.0f, // Max depth = 1.0f
+		//	0, // Not clearing stencil, but need a value
+		//	0, 0); // No scissor rects
 	}
 
 	// Raytracing - Recreate the TLAS and then trace it
@@ -263,7 +263,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		rb.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		rb.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 		rb.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		Graphics::CommandList -> ResourceBarrier(1, &rb);
+		//Graphics::CommandList -> ResourceBarrier(1, &rb);
 
 		// Must occur BEFORE present
 		Graphics::CloseAndExecuteCommandList();
