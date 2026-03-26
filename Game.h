@@ -28,7 +28,7 @@ public:
 	void Draw(float deltaTime, float totalTime);
 	void OnResize();
 
-	std::vector<GameEntity> entities;
+	std::vector<std::shared_ptr<GameEntity>> entities;
 	std::vector<Light> lights;
 
 

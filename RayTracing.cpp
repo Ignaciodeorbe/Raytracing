@@ -109,7 +109,7 @@ void RayTracing::CreateRaytracingRootSignatures()
 		globalRootSigDesc.pParameters = rootParams;
 		globalRootSigDesc.NumStaticSamplers = 0;
 		globalRootSigDesc.pStaticSamplers = 0;
-		globalRootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+		globalRootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 
 		D3D12SerializeRootSignature(&globalRootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, blob.GetAddressOf(), errors.GetAddressOf());
 		DXRDevice->CreateRootSignature(1, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(GlobalRaytracingRootSig.GetAddressOf()));
@@ -577,6 +577,7 @@ void RayTracing::CreateTopLevelAccelerationStructureForScene(std::vector<std::sh
 		memcpy(&instanceDesc.Transform, &transform, sizeof(float) * 3 * 4); // Copy first [3][4] elements
 		instanceDesc.AccelerationStructure = entity->GetMesh()->GetRayTracingData().BLAS->GetGPUVirtualAddress();
 		instanceDesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+		instanceDescs.push_back(instanceDesc);
 	}
 
 	// Grab the frame (back buffer) index.  Any CPU->GPU data

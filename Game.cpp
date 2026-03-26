@@ -52,6 +52,8 @@ Game::~Game()
 
 
 
+// Helper macro for getting a float between min and max
+#define RandomRange(min, max) (float)rand() / RAND_MAX * (max - min) + min
 
 // --------------------------------------------------------
 // Creates the geometry we're going to draw
@@ -60,17 +62,72 @@ void Game::CreateGeometry()
 {
 
 	// Create materials
-    // Note: Setting per-material PSO to null since it's not needed for ray tracing
-	std::shared_ptr<Material> matWhite = std::make_shared<Material>(nullptr, XMFLOAT3(1, 1, 1));
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState{};
+	std::shared_ptr<Material> greyMat = std::make_shared<Material>(pipelineState, XMFLOAT3(0.5f, 0.5f, 0.5f));
 
-	// Handle assets and entities
-	// Note: The Mesh constructor will call RayTracing::CreateBottomLevelAccelerationStructureForMesh(),
-	//       ensuring each mesh has its own BLAS as it is loaded.
-	sphereMesh = std::make_shared<Mesh>(FixPath("../../Assets/Models/sphere.obj").c_str());
-	sphereEntity = std::make_shared<GameEntity>(sphereMesh, matWhite);
+	// Load meshes
+	std::shared_ptr<Mesh> cubeMesh = std::make_shared<Mesh>(FixPath("../../Assets/Models/cube.obj").c_str());
+	std::shared_ptr<Mesh> torusMesh = std::make_shared<Mesh>(FixPath("../../Assets/Models/torus.obj").c_str());
+	std::shared_ptr<Mesh> sphereMesh = std::make_shared<Mesh>(FixPath("../../Assets/Models/sphere.obj").c_str());
+
+	// Floor
+	std::shared_ptr<GameEntity> floor = std::make_shared<GameEntity>(cubeMesh, greyMat);
+	floor->GetTransform()->SetScale(50, 50, 50);
+	floor->GetTransform()->SetPosition(0, -51, 0);
+	entities.push_back(floor);
+
+	
+	XMFLOAT3 colors[10] =
+	{
+		XMFLOAT3(1, 0, 0),   // Red
+		XMFLOAT3(0, 1, 0),   // Green
+		XMFLOAT3(0, 0, 1),   // Blue
+		XMFLOAT3(1, 1, 0),   // Yellow
+		XMFLOAT3(1, 0, 1),   // Magenta
+		XMFLOAT3(0, 1, 1),   // Cyan
+		XMFLOAT3(1, 0.5f, 0),// Orange
+		XMFLOAT3(0.5f, 0, 1),// Purple
+		XMFLOAT3(0.3f, 0.7f, 0.2f),
+		XMFLOAT3(0.9f, 0.9f, 0.9f)
+	};
+
+	// Toruses
+	for (int i = 0; i < 5; i++)
+	{
+		std::shared_ptr<Material> mat =
+			std::make_shared<Material>(pipelineState, colors[i]);
+
+		std::shared_ptr<GameEntity> torus =
+			std::make_shared<GameEntity>(torusMesh, mat);
+
+		torus->GetTransform()->SetScale(1.5f, 1.5f, 1.5f);
+		torus->GetTransform()->SetPosition(-8.0f + i * 4.0f, 2.0f, -3.0f);
+
+		entities.push_back(torus);
+	}
+
+	// Spheres
+	for (int i = 0; i < 5; i++)
+	{
+		std::shared_ptr<Material> mat =
+			std::make_shared<Material>(pipelineState, colors[i + 5]);
+
+		std::shared_ptr<GameEntity> sphere =
+			std::make_shared<GameEntity>(sphereMesh, mat);
+
+		sphere->GetTransform()->SetScale(1.0f, 1.0f, 1.0f);
+		sphere->GetTransform()->SetPosition(-8.0f + i * 4.0f, 1.0f, 3.0f);
+
+		entities.push_back(sphere);
+	}
+
+	// Create the ray tracing entity data buffer now that we have a scene
+	RayTracing::CreateEntityDataBuffer(entities);
 
 	// Once we have all of the BLASs ready, we can make a TLAS
-	RayTracing::CreateTopLevelAccelerationStructureForScene(sphereEntity);
+	RayTracing::CreateTopLevelAccelerationStructureForScene(entities);
+
+
 	// Finalize any initialization and wait for the GPU
 	// before proceeding to the game loop
 	Graphics::CloseAndExecuteCommandList();
@@ -112,7 +169,7 @@ void Game::Update(float deltaTime, float totalTime)
 	// Rotate entities
 	for (int i = 0; i < entities.size(); i++)
 	{
-		entities[i].GetTransform()->Rotate(0, deltaTime, 0);
+		entities[i]->GetTransform()->Rotate(0, deltaTime, 0);
 	}
 }
 
@@ -158,7 +215,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	// Raytracing - Recreate the TLAS and then trace it
 	{
-		RayTracing::CreateTopLevelAccelerationStructureForScene(sphereEntity);
+		RayTracing::CreateTopLevelAccelerationStructureForScene(entities);
 		RayTracing::Raytrace(camera, currentBackBuffer);
 	}
 
