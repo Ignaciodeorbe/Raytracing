@@ -146,6 +146,7 @@ void RayGen()
 	RayPayload payload = (RayPayload)0;
 
 	// Perform the ray trace for this ray
+	RaytracingAccelerationStructure SceneTLAS = ResourceDescriptorHeap[SceneTLASDescriptorIndex];
 	TraceRay(
 		SceneTLAS,
 		RAY_FLAG_NONE,
@@ -191,5 +192,5 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 
 	// Use the resulting data to set the final color
 	// Note: Here is where we would do actual shading!
-	payload.color = interpolatedVert.normal;
+	payload.color = thisEntity.Color.rgb;
 }
