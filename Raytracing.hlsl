@@ -1,4 +1,5 @@
 
+#define PI 3.141592654f
 
 // === Structs ===
 
@@ -16,6 +17,8 @@ struct Vertex
 struct RayPayload
 {
 	float3 color;
+    uint RecursionDepth;
+    uint RayPerPixelIndex;
 };
 
 // Note: We'll be using the built-in BuiltInTriangleIntersectionAttributes struct
@@ -46,6 +49,41 @@ cbuffer DrawData : register(b0)
     uint SceneTLASDescriptorIndex;
     uint OutputUAVDescriptorIndex;
 };
+
+// Random functions
+float rand(float2 uv)
+{
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+float2 rand2(float2 uv)
+{
+    return float2(
+		rand(uv),
+		rand(uv.yx));
+}
+
+float3 RandomVector(float u0, float u1)
+{
+    float a = u0 * 2 - 1;
+    float b = sqrt(1 - a * a);
+    float phi = 2.0f * PI * u1;
+    float x = b * cos(phi);
+    float y = b * sin(phi);
+    float z = a;
+    return float3(x, y, z);
+}
+
+float3 RandomCosineWeightedHemisphere(float u0, float u1, float3 unitNormal)
+{
+    float a = u0 * 2 - 1;
+    float b = sqrt(1 - a * a);
+    float phi = 2.0f * PI * u1;
+    float x = unitNormal.x + b * cos(phi);
+    float y = unitNormal.y + b * sin(phi);
+    float z = unitNormal.z + a;
+    return float3(x, y, z);
+}
 
 
 
@@ -180,6 +218,12 @@ void Miss(inout RayPayload payload)
 [shader("closesthit")]
 void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes hitAttributes)
 {
+	// If max recursion is reached then the light source wasnt hit
+	if(payload.RecursionDepth == 10)
+    {
+        payload.color = float3(0, 0, 0);
+        return;
+    }
 	//// Get the interpolated vertex data
 	//Vertex interpolatedVert = InterpolateVertices(
 	//	PrimitiveIndex(), 
@@ -192,5 +236,31 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 
 	// Use the resulting data to set the final color
 	// Note: Here is where we would do actual shading!
-	payload.color = thisEntity.Color.rgb;
+	payload.color *= thisEntity.Color.rgb;
+	
+    Vertex hit = InterpolateVertices(PrimitiveIndex(), hitAttributes.barycentrics);
+    float3 normal_WS = normalize(mul(hit.normal, (float3x3) ObjectToWorld4x3()));
+
+	
+    float2 pixelUV = (float2) DispatchRaysIndex().xy / DispatchRaysDimensions().xy;
+    float2 rng = rand2(pixelUV * (payload.RecursionDepth + 1) + payload.RayPerPixelIndex + RayTCurrent());
+	
+    float3 randomBounce = RandomCosineWeightedHemisphere(rand(rng), rand(rng.yx), normal_WS);
+
+	
+    RayDesc ray;
+    ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    ray.Direction = dir;
+    ray.TMin = 0.0001f;
+    ray.TMax = 1000.0f;
+	
+	// Recursive ray trace
+    payload.RecursionDepth++;
+    RaytracingAccelerationStructure SceneTLAS = ResourceDescriptorHeap[SceneTLASDescriptorIndex];
+    TraceRay(
+		SceneTLAS,
+		RAY_FLAG_NONE,
+		0xFF, 0, 0, 0, // Mask and offsets
+		ray,
+		payload);
 }
