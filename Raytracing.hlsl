@@ -28,7 +28,7 @@ struct SceneData
 {
     matrix InverseViewProjection;
     float3 CameraPosition;
-    float pad;
+    uint RaysPerPixel;
 };
 struct EntityData
 {
@@ -171,36 +171,52 @@ void RayGen()
 	
 	// Get the ray indices
 	uint2 rayIndices = DispatchRaysIndex().xy;
-
-	// Calculate the ray from the camera through a particular
-	// pixel of the output buffer using this shader's indices
-	RayDesc ray = CalcRayFromCamera(
-		rayIndices, 
-		cb.CameraPosition, 
+	
+    float3 totalColor = float3(0, 0, 0);
+	
+    for (int n = 0; n < cb.RaysPerPixel; n++)
+    {
+        float2 adjustedIndices = (float2) rayIndices;
+        float ray01 = (float) n / cb.RaysPerPixel;
+        adjustedIndices += rand2(rayIndices.xy * ray01);
+		
+		// Calculate the ray from the camera through a particular
+		// pixel of the output buffer using this shader's indices
+        RayDesc ray = CalcRayFromCamera(
+		rayIndices,
+		cb.CameraPosition,
 		cb.InverseViewProjection);
 
-	// Set up the payload for the ray
-	// This initializes the struct to all zeros
-	RayPayload payload = (RayPayload)0;
+		// Set up the payload for the ray
+		// This initializes the struct to all zeros
+        RayPayload payload = (RayPayload) 0;
+        payload.color = float3(1, 1, 1);
+        payload.RecursionDepth = 0;
+        payload.RayPerPixelIndex = n;
+	
+		// Perform the ray trace for this ray
+        RaytracingAccelerationStructure SceneTLAS = ResourceDescriptorHeap[SceneTLASDescriptorIndex];
+        TraceRay(
+			SceneTLAS,
+			RAY_FLAG_NONE,
+			0xFF,
+			0,
+			0,
+			0,
+			ray,
+			payload);
+		
+        totalColor += payload.color;
+    }
 
-	// Perform the ray trace for this ray
-	RaytracingAccelerationStructure SceneTLAS = ResourceDescriptorHeap[SceneTLASDescriptorIndex];
-	TraceRay(
-		SceneTLAS,
-		RAY_FLAG_NONE,
-		0xFF,
-		0,
-		0,
-		0,
-		ray,
-		payload);
+	
 
 	// Set the final color of the buffer (gamma corrected)
     RWTexture2D<float4> OutputColor =
 		ResourceDescriptorHeap[OutputUAVDescriptorIndex];
 	
 	// Set the final color of the buffer
-	OutputColor[rayIndices] = float4(payload.color, 1);
+    OutputColor[rayIndices] = float4(pow(totalColor / cb.RaysPerPixel, 1.0f / 2.2f), 1);
 }
 
 
@@ -245,8 +261,9 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     float2 pixelUV = (float2) DispatchRaysIndex().xy / DispatchRaysDimensions().xy;
     float2 rng = rand2(pixelUV * (payload.RecursionDepth + 1) + payload.RayPerPixelIndex + RayTCurrent());
 	
+    float3 refl = reflect(WorldRayDirection(), normal_WS);
     float3 randomBounce = RandomCosineWeightedHemisphere(rand(rng), rand(rng.yx), normal_WS);
-
+    float3 dir = normalize(lerp(refl, randomBounce, thisEntity.Color.a));
 	
     RayDesc ray;
     ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();

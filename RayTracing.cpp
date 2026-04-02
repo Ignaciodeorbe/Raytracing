@@ -759,6 +759,8 @@ void RayTracing::Raytrace(std::shared_ptr<Camera> camera, Microsoft::WRL::ComPtr
 	// Grab and fill a constant buffer
 	RayTracingSceneData sceneData = {};
 	sceneData.CameraPosition = camera->GetTransform().GetPosition();
+	sceneData.RaysPerPixel = 10;
+
 
 	DirectX::XMFLOAT4X4 view = camera->ViewMatrix();
 	DirectX::XMFLOAT4X4 proj = camera->ProjectionMatrix();
