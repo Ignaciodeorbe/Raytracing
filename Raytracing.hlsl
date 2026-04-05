@@ -16,9 +16,14 @@ struct Vertex
 // Note: This should be as small as possible, and must match our C++ size definition
 struct RayPayload
 {
-	float3 color;
+    float3 color;
     uint RecursionDepth;
     uint RayPerPixelIndex;
+};
+
+struct ShadowPayload
+{
+    bool Hit;
 };
 
 // Note: We'll be using the built-in BuiltInTriangleIntersectionAttributes struct
@@ -104,34 +109,34 @@ Vertex InterpolateVertices(uint triangleIndex, float2 barycentrics)
 		ResourceDescriptorHeap[thisEntity.VertexBufferDescriptorIndex];
 	
 	// Grab the 3 indices for this triangle
-	uint firstIndex = triangleIndex * 3;
-	uint indices[3];
-	indices[0] = IndexBuffer[firstIndex + 0];
-	indices[1] = IndexBuffer[firstIndex + 1];
-	indices[2] = IndexBuffer[firstIndex + 2];
+    uint firstIndex = triangleIndex * 3;
+    uint indices[3];
+    indices[0] = IndexBuffer[firstIndex + 0];
+    indices[1] = IndexBuffer[firstIndex + 1];
+    indices[2] = IndexBuffer[firstIndex + 2];
 
 	// Grab the 3 corresponding vertices
-	Vertex verts[3];
-	verts[0] = VertexBuffer[indices[0]];
-	verts[1] = VertexBuffer[indices[1]];
-	verts[2] = VertexBuffer[indices[2]];
+    Vertex verts[3];
+    verts[0] = VertexBuffer[indices[0]];
+    verts[1] = VertexBuffer[indices[1]];
+    verts[2] = VertexBuffer[indices[2]];
 	
 	// Calculate the barycentric data for vertex interpolation
-	float3 barycentricData = float3(
+    float3 barycentricData = float3(
 		1.0f - barycentrics.x - barycentrics.y,
 		barycentrics.x,
 		barycentrics.y);
 	
 	// Loop through the barycentric data and interpolate
-    Vertex finalVert = (Vertex)0;
-	for (uint i = 0; i < 3; i++)
-	{
-		finalVert.localPosition += verts[i].localPosition * barycentricData[i];
-		finalVert.uv += verts[i].uv * barycentricData[i];
-		finalVert.normal += verts[i].normal * barycentricData[i];
-		finalVert.tangent += verts[i].tangent * barycentricData[i];
-	}
-	return finalVert;
+    Vertex finalVert = (Vertex) 0;
+    for (uint i = 0; i < 3; i++)
+    {
+        finalVert.localPosition += verts[i].localPosition * barycentricData[i];
+        finalVert.uv += verts[i].uv * barycentricData[i];
+        finalVert.normal += verts[i].normal * barycentricData[i];
+        finalVert.tangent += verts[i].tangent * barycentricData[i];
+    }
+    return finalVert;
 }
 
 
@@ -139,21 +144,21 @@ Vertex InterpolateVertices(uint triangleIndex, float2 barycentrics)
 RayDesc CalcRayFromCamera(float2 rayIndices, float3 camPos, float4x4 invVP)
 {
 	// Offset to the middle of the pixel
-	float2 pixel = rayIndices + 0.5f;
-	float2 screenPos = pixel / DispatchRaysDimensions().xy * 2.0f - 1.0f;
-	screenPos.y = -screenPos.y;
+    float2 pixel = rayIndices + 0.5f;
+    float2 screenPos = pixel / DispatchRaysDimensions().xy * 2.0f - 1.0f;
+    screenPos.y = -screenPos.y;
 
 	// Unproject the coords
-	float4 worldPos = mul(invVP, float4(screenPos, 0, 1));
-	worldPos.xyz /= worldPos.w;
+    float4 worldPos = mul(invVP, float4(screenPos, 0, 1));
+    worldPos.xyz /= worldPos.w;
 
 	// Set up the ray
-	RayDesc ray;
-	ray.Origin = camPos.xyz;
-	ray.Direction = normalize(worldPos.xyz - ray.Origin);
-	ray.TMin = 0.01f;
-	ray.TMax = 1000.0f;
-	return ray;
+    RayDesc ray;
+    ray.Origin = camPos.xyz;
+    ray.Direction = normalize(worldPos.xyz - ray.Origin);
+    ray.TMin = 0.01f;
+    ray.TMax = 1000.0f;
+    return ray;
 }
 
 
@@ -170,7 +175,7 @@ void RayGen()
 		ResourceDescriptorHeap[SceneDataConstantBufferIndex];
 	
 	// Get the ray indices
-	uint2 rayIndices = DispatchRaysIndex().xy;
+    uint2 rayIndices = DispatchRaysIndex().xy;
 	
     float3 totalColor = float3(0, 0, 0);
 	
@@ -238,12 +243,26 @@ void Miss(inout RayPayload payload)
 }
 
 
+[shader("miss")]
+void ShadowMiss(inout ShadowPayload payload)
+{
+    payload.Hit = false;
+}
+
+[shader("closesthit")]
+void ShadowClosestHit(inout ShadowPayload payload, BuiltInTriangleIntersectionAttributes attr)
+{
+    payload.Hit = true; 
+}
+
+
+
 // Closest hit shader - Runs the first time a ray hits anything
 [shader("closesthit")]
 void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes hitAttributes)
 {
 	// If max recursion is reached then the light source wasnt hit
-	if(payload.RecursionDepth == 10)
+    if (payload.RecursionDepth == 10)
     {
         payload.color = float3(0, 0, 0);
         return;
@@ -260,10 +279,52 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 
 	// Use the resulting data to set the final color
 	// Note: Here is where we would do actual shading!
-	payload.color *= thisEntity.Color.rgb;
+    payload.color *= thisEntity.Color.rgb;
 	
     Vertex hit = InterpolateVertices(PrimitiveIndex(), hitAttributes.barycentrics);
     float3 normal_WS = normalize(mul(hit.normal, (float3x3) ObjectToWorld4x3()));
+	
+	
+
+    // sun direction
+    float3 directionToSun = normalize(float3(1, 1, -1));
+
+    float NdotL = dot(normal_WS, directionToSun);
+
+    if (NdotL > 0)
+    {
+        float3 hitPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+
+        // shadow ray
+        RayDesc shadowRay;
+        shadowRay.Direction = directionToSun;
+        shadowRay.Origin = hitPos + normal_WS * 0.01f;
+        shadowRay.TMin = 0.001f;
+        shadowRay.TMax = 1000.0f;
+
+        // Shadow payload
+        ShadowPayload shadowPayload;
+        shadowPayload.Hit = false;
+
+        // Trace shadow ray
+        RaytracingAccelerationStructure SceneTLAS = ResourceDescriptorHeap[SceneTLASDescriptorIndex];
+        TraceRay(
+        SceneTLAS,
+        RAY_FLAG_NONE,
+        0xFF,
+        1, 
+        0,
+        1, 
+        shadowRay,
+        shadowPayload);
+
+        if (!shadowPayload.Hit)
+        {
+            payload.color *= NdotL;
+        }
+    }
+    
+    
 
 	
     float2 pixelUV = (float2) DispatchRaysIndex().xy / DispatchRaysDimensions().xy;
