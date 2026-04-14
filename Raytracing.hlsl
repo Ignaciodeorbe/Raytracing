@@ -320,7 +320,7 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 
         if (!shadowPayload.Hit)
         {
-            payload.color *= NdotL;
+            payload.color += NdotL;
         }
     }
     

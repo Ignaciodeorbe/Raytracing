@@ -147,7 +147,7 @@ void RayTracing::CreateRaytracingPipelineState(std::wstring raytracingShaderLibr
 	//       need to refer to others by address, and a vector resizing causes
 	//       the underlying array to be recreated (so addresses are invalidated)
 	std::vector<D3D12_STATE_SUBOBJECT> subobjects;
-	subobjects.reserve(10);
+	subobjects.reserve(11);
 
 	// === Ray generation shader ===
 	D3D12_EXPORT_DESC rayGenExportDesc = {};
@@ -201,6 +201,38 @@ void RayTracing::CreateRaytracingPipelineState(std::wstring raytracingShaderLibr
 	subobjects.push_back(closestHitSubObj);
 
 
+	// Shadow miss shader
+	D3D12_EXPORT_DESC shadowMissExportDesc = {};
+	shadowMissExportDesc.Name = L"ShadowMiss";
+
+	D3D12_DXIL_LIBRARY_DESC shadowMissLibDesc = {};
+	shadowMissLibDesc.DXILLibrary = rayGenLibDesc.DXILLibrary;
+	shadowMissLibDesc.NumExports = 1;
+	shadowMissLibDesc.pExports = &shadowMissExportDesc;
+
+	D3D12_STATE_SUBOBJECT shadowMissSubObj = {};
+	shadowMissSubObj.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	shadowMissSubObj.pDesc = &shadowMissLibDesc;
+
+	subobjects.push_back(shadowMissSubObj);
+
+
+	// Shadow closest hit shader
+	D3D12_EXPORT_DESC shadowCHExportDesc = {};
+	shadowCHExportDesc.Name = L"ShadowClosestHit";
+
+	D3D12_DXIL_LIBRARY_DESC shadowCHLibDesc = {};
+	shadowCHLibDesc.DXILLibrary = rayGenLibDesc.DXILLibrary;
+	shadowCHLibDesc.NumExports = 1;
+	shadowCHLibDesc.pExports = &shadowCHExportDesc;
+
+	D3D12_STATE_SUBOBJECT shadowCHSubObj = {};
+	shadowCHSubObj.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	shadowCHSubObj.pDesc = &shadowCHLibDesc;
+
+	subobjects.push_back(shadowCHSubObj);
+
+
 	// === Hit group ===
 	D3D12_HIT_GROUP_DESC hitGroupDesc = {};
 	hitGroupDesc.ClosestHitShaderImport = L"ClosestHit";
@@ -211,6 +243,17 @@ void RayTracing::CreateRaytracingPipelineState(std::wstring raytracingShaderLibr
 	hitGroup.pDesc = &hitGroupDesc;
 
 	subobjects.push_back(hitGroup);
+
+	// Shadow hit group
+	D3D12_HIT_GROUP_DESC shadowHitGroupDesc = {};
+	shadowHitGroupDesc.ClosestHitShaderImport = L"ShadowClosestHit";
+	shadowHitGroupDesc.HitGroupExport = L"ShadowHitGroup";
+
+	D3D12_STATE_SUBOBJECT shadowHitGroup = {};
+	shadowHitGroup.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
+	shadowHitGroup.pDesc = &shadowHitGroupDesc;
+
+	subobjects.push_back(shadowHitGroup);
 
 	// === Shader config (payload) ===
 	D3D12_RAYTRACING_SHADER_CONFIG shaderConfigDesc = {};
@@ -225,12 +268,12 @@ void RayTracing::CreateRaytracingPipelineState(std::wstring raytracingShaderLibr
 
 	// === Association - Payload and shaders ===
 	// Names of shaders that use the payload
-	const wchar_t* payloadShaderNames[] = { L"RayGen", L"Miss", L"HitGroup" };
+	const wchar_t* payloadShaderNames[] = { L"RayGen", L"Miss", L"HitGroup", L"ShadowMiss", L"ShadowHitGroup" };
 
 	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION shaderPayloadAssociation = {};
 	shaderPayloadAssociation.NumExports = ARRAYSIZE(payloadShaderNames);
 	shaderPayloadAssociation.pExports = payloadShaderNames;
-	shaderPayloadAssociation.pSubobjectToAssociate = &subobjects[4]; // Payload config above!
+	shaderPayloadAssociation.pSubobjectToAssociate = &subobjects[7]; // Payload config above!
 
 	D3D12_STATE_SUBOBJECT shaderPayloadAssociationObject = {};
 	shaderPayloadAssociationObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
@@ -283,8 +326,8 @@ void RayTracing::CreateShaderTables()
 
 	// How many of each type of shader?
 	UINT64 rayGenCount = 1;
-	UINT64 missCount = 1;
-	UINT64 hitGroupCount = 1;
+	UINT64 missCount = 2;
+	UINT64 hitGroupCount = 2;
 
 	// Ray Gen Table setup
 	{
@@ -329,6 +372,12 @@ void RayTracing::CreateShaderTables()
 			addr,
 			RaytracingPipelineProperties->GetShaderIdentifier(L"Miss"), 
 			D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+		memcpy(
+			addr + missRecordSize,
+			RaytracingPipelineProperties->GetShaderIdentifier(L"ShadowMiss"),
+			D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
 		MissTable->Unmap(0, 0);
 	}
 
@@ -354,6 +403,12 @@ void RayTracing::CreateShaderTables()
 			addr, 
 			RaytracingPipelineProperties->GetShaderIdentifier(L"HitGroup"), 
 			D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+		memcpy(
+			addr + hitGroupRecordSize,
+			RaytracingPipelineProperties->GetShaderIdentifier(L"ShadowHitGroup"),
+			D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
 		HitGroupTable->Unmap(0, 0);
 	}
 }
